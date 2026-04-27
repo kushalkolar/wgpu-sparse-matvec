@@ -8,8 +8,6 @@ import pygfx
 import fastplotlib as fpl
 from fastplotlib.graphics.features import TextureArray
 
-_WORKGROUP_SIZE = 32
-
 import time
 
 from typing import Optional, Union
@@ -38,12 +36,12 @@ class ComputeShader:
     """
 
     def __init__(
-            self,
-            wgsl,
-            *,
-            entry_point: Optional[str] = None,
-            label: Optional[str] = None,
-            report_time: bool = False,
+        self,
+        wgsl,
+        *,
+        entry_point: Optional[str] = None,
+        label: Optional[str] = None,
+        report_time: bool = False,
     ):
         # Fixed
         self._wgsl = wgsl
@@ -76,11 +74,11 @@ class ComputeShader:
         return self._changed
 
     def set_resource(
-            self,
-            index: int,
-            resource: Union[gfx.Buffer, gfx.Texture, wgpu.GPUBuffer, wgpu.GPUTexture],
-            *,
-            clear=False,
+        self,
+        index: int,
+        resource: Union[gfx.Buffer, gfx.Texture, wgpu.GPUBuffer, wgpu.GPUTexture],
+        *,
+        clear=False,
     ):
         """Set a resource.
 
@@ -98,14 +96,14 @@ class ComputeShader:
         if not isinstance(index, int):
             raise TypeError(f"ComputeShader resource index must be int, not {index!r}.")
         if not isinstance(
-                resource, (gfx.Buffer, gfx.Texture, wgpu.GPUBuffer, wgpu.GPUTexture)
+            resource, (gfx.Buffer, gfx.Texture, wgpu.GPUBuffer, wgpu.GPUTexture)
         ):
             raise TypeError(
                 f"ComputeShader resource value must be gfx.Buffer, gfx.Texture, wgpu.GPUBuffer, or wgpu.GPUTexture, not {resource!r}"
             )
         clear = bool(clear)
         if clear and not isinstance(
-                resource, (gfx.Buffer, gfx.Texture, wgpu.GPUBuffer)
+            resource, (gfx.Buffer, gfx.Texture, wgpu.GPUBuffer)
         ):
             raise ValueError("Can only clear a buffer, not a texture.")
 
@@ -306,6 +304,7 @@ def create_storage_buffer(device, array: np.ndarray) -> wgpu.GPUBuffer:
 @dataclass
 class MatrixCSR:
     """organize our CSR buffers"""
+
     indptr: wgpu.GPUBuffer
     indices: wgpu.GPUBuffer
     values: wgpu.GPUBuffer
@@ -335,11 +334,21 @@ class SparseDenseImage:
 
     """
 
-    def __init__(self, A, C, shape, scale_factor=None, scale_add=None, benchmark: bool = False):
+    def __init__(
+        self,
+        A: scipy.sparse.csr_matrix,
+        C: np.ndarray,
+        shape: tuple[int, int],
+        scale_factor: np.ndarray = None,
+        scale_add: np.ndarray = None,
+        workgroup_size: int = 32,
+        benchmark: bool = False,
+    ):
         # get the shapes of things
         p, k = A.shape
         _, T = C.shape
         m, n = shape
+        self._workgroup_size = workgroup_size
 
         # we only use scaling for the PMD results
         if scale_factor is None:
@@ -355,9 +364,15 @@ class SparseDenseImage:
 
         # create GPU buffers
         self._A = MatrixCSR(
-            indptr=create_storage_buffer(device, np.ascontiguousarray(A.indptr, np.uint32)),
-            indices=create_storage_buffer(device, np.ascontiguousarray(A.indices, np.uint32)),
-            values=create_storage_buffer(device, np.ascontiguousarray(A.data, np.float32)),
+            indptr=create_storage_buffer(
+                device, np.ascontiguousarray(A.indptr, np.uint32)
+            ),
+            indices=create_storage_buffer(
+                device, np.ascontiguousarray(A.indices, np.uint32)
+            ),
+            values=create_storage_buffer(
+                device, np.ascontiguousarray(A.data, np.float32)
+            ),
         )
         self._C = create_storage_buffer(device, np.ascontiguousarray(C))
         self._scale_factor = create_storage_buffer(device, scale_factor)
@@ -368,9 +383,9 @@ class SparseDenseImage:
             data=np.zeros((m, n), dtype=np.float32),
             cpu_buffer=False,  # buffer only exists on the GPU
             usage=(
-                    wgpu.TextureUsage.STORAGE_BINDING  # used in compute kernel
-                    | wgpu.TextureUsage.TEXTURE_BINDING  # used as a texture
-                    | wgpu.TextureUsage.COPY_SRC  # allow compute kernel to write to it
+                wgpu.TextureUsage.STORAGE_BINDING  # used in compute kernel
+                | wgpu.TextureUsage.TEXTURE_BINDING  # used as a texture
+                | wgpu.TextureUsage.COPY_SRC  # allow compute kernel to write to it
             ),
         )
 
@@ -387,7 +402,7 @@ class SparseDenseImage:
             entry_point="spmv_csr",
             report_time=self._benchmark,
         )
-        self._compute_shader.set_constant("wg_size", _WORKGROUP_SIZE)
+        self._compute_shader.set_constant("wg_size", self._workgroup_size)
         self._compute_shader.set_constant("T", T)
         self._compute_shader.set_constant("n_cols", n)
         self._compute_shader.set_resource(0, self._A.indptr)
@@ -402,7 +417,9 @@ class SparseDenseImage:
 
         vmin, vmax = self.estimate_vmin_vmax()
 
-        self._image_graphic = fpl.ImageGraphic(self._texture_array, vmin=vmin, vmax=vmax, cmap="viridis")
+        self._image_graphic = fpl.ImageGraphic(
+            self._texture_array, vmin=vmin, vmax=vmax, cmap="viridis"
+        )
 
         self.dispatch()
 
@@ -439,7 +456,9 @@ class SparseDenseImage:
         Download the current image from the GPU and get as a numpy array
         """
         device = pygfx.renderers.wgpu.get_shared().device
-        wgpu_texture = pygfx.renderers.wgpu.engine.update.ensure_wgpu_object(self._texture)
+        wgpu_texture = pygfx.renderers.wgpu.engine.update.ensure_wgpu_object(
+            self._texture
+        )
 
         buf = device.queue.read_texture(
             source={"texture": wgpu_texture, "origin": (0, 0, 0), "mip_level": 0},
@@ -463,7 +482,9 @@ class SparseDenseImage:
 
     def dispatch(self):
         """run the compute shader"""
-        return self._compute_shader.dispatch((self._p + _WORKGROUP_SIZE - 1) // _WORKGROUP_SIZE)
+        return self._compute_shader.dispatch(
+            (self._p + self._workgroup_size - 1) // self._workgroup_size
+        )
 
     def get_timings(self):
         if not self._benchmark:

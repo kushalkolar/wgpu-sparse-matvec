@@ -6,7 +6,7 @@ from project import SparseDenseImage
 from pathlib import Path
 import masknmf
 
-adapter = fpl.enumerate_adapters()[0]
+adapter = fpl.enumerate_adapters()[1]
 print(adapter.info)
 fpl.select_adapter(adapter)
 
