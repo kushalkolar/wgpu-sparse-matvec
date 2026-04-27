@@ -19,7 +19,7 @@ fpl.select_adapter(adapter)
 parent_path = Path("/home/kushal/data/alyx/cortexlab/Subjects/")
 
 subject = "SP058"
-session = "2024-07-18"
+session = "2024-07-23"
 
 session_path = parent_path.joinpath(subject, session)
 
@@ -50,7 +50,11 @@ T = int(V.shape[1])
 scale_factor = dmr.pmd_array.var_img.ravel().cpu().numpy()
 scale_add = dmr.pmd_array.mean_img.ravel().cpu().numpy()
 
-WORKGROUP_SIZE = 64
+WORKGROUP_SIZE = 32
+# WORKGROUP_SIZE = 64
+# WORKGROUP_SIZE = 128
+# WORKGROUP_SIZE = 256
+
 
 pmd_spmv = SpMVImage(
     U_csr,
@@ -166,13 +170,13 @@ for benchmark_func, objs, torch_cpu_download in params:
             "wgsl-workgroup-size": (
                 WORKGROUP_SIZE if benchmark_func is benchmark_wgsl else None
             ),
-            "dataset": session,
+            "session": session,
             **result,
         }
 
 
 if not Path(__file__).parent.joinpath("benchmarks.csv").is_file():
     # create new dataframe
-    df.to_csv("benchmarks.csv", index=False, mode="a")
+    df.to_csv("benchmarks.csv", index=False)
 else:
-    df.to_csv("benchmarks.csv", index=False, header=False)
+    df.to_csv("benchmarks.csv", index=False, header=False, mode="a")
