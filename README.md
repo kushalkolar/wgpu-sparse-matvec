@@ -1,5 +1,9 @@
 # Sparse mat-vec on WGPU
 
+Fast sparse matrix-vector multiply, even on modest integrated GPUs!
+
+https://github.com/user-attachments/assets/32bf8f5d-559b-4eab-af23-86d6f0050306
+
 ## Installation
 
 Installing this currently requires you to clone and install fastplotlib 
