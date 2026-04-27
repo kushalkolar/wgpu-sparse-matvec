@@ -50,10 +50,12 @@ fastplotlib `TextureArray` which allows us to visualize the results as new frame
 
 ### shaders (compute kernels)
 
-`matvec.wgsl` - not used, just a basic naive mat-vec kernel that operates on dense arrays
+* `matvec.wgsl` - not used, just a basic naive mat-vec kernel that operates on dense arrays
 `matvec_coalesced.wgsl` - basic mat-vec that uses coalesced as opposed to strided memory access for more efficient reads. See: https://developer.nvidia.com/blog/unlock-gpu-performance-global-memory-access-in-cuda/
-`spmv_csr_scalar.wgsl` - basic naive sparse CSR mat-vec implementation
-`spmv_csr_vector.wgsl` - vector form of sparse CSR mat-vec implementation that performs more efficient reads by parallelizing across local invocations (a.k.a. threads) within a row
+
+* `spmv_csr_scalar.wgsl` - basic naive sparse CSR mat-vec implementation
+
+* `spmv_csr_vector.wgsl` - vector form of sparse CSR mat-vec implementation that performs more efficient reads by parallelizing across local invocations (a.k.a. threads) within a row
 
 ### Example files
 
