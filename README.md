@@ -28,7 +28,7 @@ pip install git+https://github.com/pygfx/pygfx.git@main
 
 ## Benchmarks
 
-First, the comparison the torch implemention in [masknmf](https://github.com/apasarkar/masknmf-toolbox), the wgsl compute shader is at-par or better than torch's sparse mat-vec. Torch's sparse operations in general are not the best part of the library so maybe not too surprising?
+First, comparison with the torch implemention in [masknmf](https://github.com/apasarkar/masknmf-toolbox). The wgsl compute shader is at-par or better than torch's sparse mat-vec. Torch's sparse operations in general are not the best part of the library so maybe not too surprising?
 
 The "denoise" is a denser sparse matrix, and "demix" is much less dense.
 
@@ -43,9 +43,6 @@ If we just compare the wgsl kernels across devices, we can see that they perform
 ### project dir
 
 #### `_spmv.py`
-
- tell the GPU to render 
-specific data, and then have a Texture so we can view it. The classes in this module handle this.
 
 * `ComputeShader`: helper class adopted from pygfx, modified to be compatible with basic uniform buffers. 
 This class manages bindings (i.e. describe data that gets binded to the GPU), and the pipeline. We can 
