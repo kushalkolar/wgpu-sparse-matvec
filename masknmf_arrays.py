@@ -6,7 +6,7 @@ from project import SpMVImage
 from pathlib import Path
 import masknmf
 
-adapter = fpl.enumerate_adapters()[0]
+adapter = fpl.enumerate_adapters()[1]
 print(adapter.info)
 fpl.select_adapter(adapter)
 
@@ -61,6 +61,7 @@ ac = SpMVImage(
 fig = fpl.Figure(
     shape=(1, 2),
     names=["pmd", "ac"],
+    controller_ids="sync",
     size=(1200, 700),
     canvas_kwargs={"max_fps": 999, "vsync": False},
 )
@@ -68,6 +69,7 @@ fig = fpl.Figure(
 fig["pmd"].add_graphic(pmd.image_graphic)
 fig["ac"].add_graphic(ac.image_graphic)
 
+fig["pmd"].tooltip.enabled = False
 
 def update(figure):
     t = pmd.t
