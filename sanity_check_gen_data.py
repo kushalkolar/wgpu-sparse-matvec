@@ -28,7 +28,7 @@ spmv_img = SpMVImage(
     C,
     shape=(m, n),
     benchmark=True,
-    spmv_mode="vector",  # set to "vector" to use the vector form of CSR mat-vec
+    spmv_mode="scalar",  # set to "vector" or "scalar" the specific CSR mat-vec kernel
 )
 
 err = np.zeros(T)
@@ -38,7 +38,7 @@ for i in tqdm(range(T)):
 
     spmv_img.t = i
     diff = spmv_img.to_numpy() - truth
-
+    # compute relative error using Frobenius norm
     err[i] = np.linalg.norm(diff, ord="fro") / np.linalg.norm(truth, ord="fro")
 
 print(err.max())

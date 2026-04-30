@@ -1,18 +1,18 @@
 from scipy import sparse
-import numpy as np
-from tqdm import tqdm
-
-import masknmf
 import fastplotlib as fpl
 
 from project import SpMVImage
 
+import masknmf
+
+# if WGPU can't find an adapter it will raise, or it will give you a LLVM CPU adapter which you don't want
+# if you have multiple GPUs you can select it using the int index, here the GPU at index 0 is selected.
 adapter = fpl.enumerate_adapters()[0]
-print(adapter.info.device)
+print(adapter.info)
 fpl.select_adapter(adapter)
 
-# path to the demixing results file
-dmr_path = f"./demix.hdf5"
+# path to the demixing results data file
+dmr_path = "./demix.hdf5"
 dmr = masknmf.DemixingResults.from_hdf5(dmr_path)
 
 # create the scipy CSR sparse arrays
@@ -44,40 +44,47 @@ scale_factor = dmr.pmd_array.var_img.ravel().cpu().numpy()
 scale_add = dmr.pmd_array.mean_img.ravel().cpu().numpy()
 
 # create objects that render with the data from teh compute kernels
-pmd_spmv = SpMVImage(
+pmd = SpMVImage(
     U_csr,
     V,
     scale_factor=scale_factor,
     scale_add=scale_add,
     shape=(m, n),
-    benchmark=True,
     spmv_mode="vector",  # choose the kernel
 )
 
-ac_spmv = SpMVImage(
+ac = SpMVImage(
     A_csr,
     C,
     shape=(m, n),
-    benchmark=True,
-    spmv_mode="vector",
+    spmv_mode="scalar",
 )
 
-dmr.to("cuda")
+fig = fpl.Figure(
+    shape=(1, 2),
+    names=["pmd", "ac"],
+    controller_ids="sync",
+    size=(1200, 700),
+    canvas_kwargs={"max_fps": 999, "vsync": False},
+)
+
+fig["pmd"].add_graphic(pmd.image_graphic)
+fig["ac"].add_graphic(ac.image_graphic)
+
+fig["pmd"].tooltip.enabled = False
+
+def update(figure):
+    t = pmd.t
+    t += 1
+
+    if t == T:
+        t = 0
+
+    pmd.t = t
+    ac.t = t
 
 
-err_pmd = np.zeros(T)
-err_ac = np.zeros(T)
-# check that results match pytorch
-for i in tqdm(np.random.randint(0, T, size=100)):
-    pmd_spmv.t = i
-    ac_spmv.t = i
-    pmd_frame_torch = dmr.pmd_array[i].cpu().numpy().squeeze()
-    ac_frame_torch = dmr.ac_array[i].cpu().numpy().squeeze()
-    diff_pmd = pmd_spmv.to_numpy() - pmd_frame_torch
-    diff_ac = ac_spmv.to_numpy() - ac_frame_torch
-
-    # compute relative error using Frobenius norm
-    err_pmd[i] = np.linalg.norm(diff_pmd, ord="fro") / np.linalg.norm(pmd_frame_torch, ord="fro")
-    err_ac[i] = np.linalg.norm(diff_ac, ord="fro") / np.linalg.norm(ac_frame_torch, ord="fro")
-
-print(err_pmd.max(), err_ac.max())
+fig.add_animations(update)
+fig.imgui_show_fps = True
+fig.show()
+fpl.loop.run()
